@@ -102,7 +102,8 @@ export default async function CourseDetail({ params }: { params: { courseId: str
                       </button>
                     )}
                   </Link>
-                ))}
+                  )
+                })}
               </div>
             </div>
           ))}

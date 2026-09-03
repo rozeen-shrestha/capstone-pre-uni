@@ -28,8 +28,9 @@ export const Module = mongoose.models.Module || mongoose.model('Module', ModuleS
 // Lesson
 const LessonSchema = new Schema({
   title: { type: String, required: true },
-  type: { type: String, enum: ['TEXT', 'VIDEO'], default: 'TEXT' },
+  type: { type: String, enum: ['READING', 'VIDEO', 'ASSESSMENT'], default: 'READING' },
   content: { type: String, required: true },
+  duration: { type: String, default: '5 min' },
   order: { type: Number, required: true },
   moduleId: { type: Schema.Types.ObjectId, ref: 'Module', required: true }
 });

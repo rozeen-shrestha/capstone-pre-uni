@@ -17,50 +17,73 @@ async function main() {
   await Course.deleteMany({});
   await User.deleteMany({});
 
-  console.log('Seeding database...');
+  console.log('Seeding HTML Course...');
 
-  // Create Instructor
-  const instructor = await User.create({
-    email: 'instructor@example.com',
-    role: 'INSTRUCTOR',
-  });
-
-  // Create Student
-  await User.create({
-    email: 'student@example.com',
-    role: 'STUDENT',
-  });
+  // Create Instructor & Student
+  const instructor = await User.create({ email: 'instructor@example.com', role: 'INSTRUCTOR' });
+  await User.create({ email: 'student@example.com', role: 'STUDENT' });
 
   // Create Course
   const course = await Course.create({
-    title: 'Introduction to Artificial Intelligence',
-    description: 'Learn the basics of AI, machine learning, and neural networks.',
+    title: 'HTML Basics (W3Schools Style)',
+    description: 'Learn to build web pages using HTML. Simple, easy, and assessed by AI.',
     instructorId: instructor._id,
   });
 
-  const courseModule = await Module.create({
-    title: 'Module 1: Foundations',
-    order: 1,
-    courseId: course._id
+  // Module 1
+  const mod1 = await Module.create({ title: 'Course Introduction & HTML Basics', order: 1, courseId: course._id });
+  
+  await Lesson.create({
+    title: 'Introduction to the course', type: 'VIDEO',
+    content: 'Welcome to the HTML course. You will learn tags, elements, and attributes.',
+    duration: '2 min', order: 1, moduleId: mod1._id
   });
 
-  const lesson = await Lesson.create({
-    title: 'What is AI?',
-    type: 'TEXT',
-    content: 'Artificial Intelligence is the simulation of human intelligence by software-coded heuristics.',
-    order: 1,
-    moduleId: courseModule._id
+  await Lesson.create({
+    title: 'HTML Elements', type: 'READING',
+    content: 'An HTML element usually consists of a start tag and an end tag, with the content inserted in between: <tagname>Content goes here...</tagname>',
+    duration: '5 min', order: 2, moduleId: mod1._id
+  });
+
+  const m1Assessment = await Lesson.create({
+    title: 'Module 1 Viva: HTML Basics', type: 'ASSESSMENT',
+    content: 'You will now talk to the AI agent to prove you understand HTML tags.',
+    duration: '10 min', order: 3, moduleId: mod1._id
   });
 
   await Objective.create({
-    description: 'Explain the difference between narrow AI and general AI.',
+    description: 'Explain what an HTML element is and give a simple example.',
     rubricCriteria: [
-      'Identifies narrow AI as specialized for a single task.',
-      'Identifies general AI as having human-like cognitive flexibility.',
-      'Provides an example of narrow AI (e.g., Siri, chess bot).'
+      'Mentions that an HTML element has a start tag and end tag.',
+      'Provides a valid example (e.g. <h1>Hello</h1> or <p>text</p>)'
     ],
     maxTurns: 3,
-    lessonId: lesson._id
+    lessonId: m1Assessment._id
+  });
+
+  // Module 2
+  const mod2 = await Module.create({ title: 'HTML Formatting', order: 2, courseId: course._id });
+
+  await Lesson.create({
+    title: 'Text Formatting', type: 'READING',
+    content: 'HTML contains several elements for defining text with a special meaning, such as <b> for bold and <i> for italic.',
+    duration: '10 min', order: 1, moduleId: mod2._id
+  });
+
+  const m2Assessment = await Lesson.create({
+    title: 'Module 2 Viva: Formatting', type: 'ASSESSMENT',
+    content: 'Viva exam for HTML formatting.',
+    duration: '10 min', order: 2, moduleId: mod2._id
+  });
+
+  await Objective.create({
+    description: 'Explain how to make text bold or italic in HTML.',
+    rubricCriteria: [
+      'Mentions the <b> or <strong> tag for bold.',
+      'Mentions the <i> or <em> tag for italic.'
+    ],
+    maxTurns: 3,
+    lessonId: m2Assessment._id
   });
 
   console.log('Seed completed successfully. Course ID:', course._id);

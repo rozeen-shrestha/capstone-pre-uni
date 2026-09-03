@@ -41,21 +41,20 @@ export async function POST(req: Request) {
 
     // 3. System Prompt & State Machine constraints
     const systemPrompt = `
-      You are an AI assessment agent evaluating a learner's understanding of a specific learning objective.
+      You are a friendly, VERY lenient AI assessment agent conducting a "viva exam" to check a learner's understanding.
       Objective: ${objective.description}
-      Rubric Criteria to satisfy:
+      Criteria to look for:
       ${objective.rubricCriteria.map((c: string, i: number) => `${i + 1}. ${c}`).join('\n')}
 
       Current Turn: ${attempt.turnCount}
       Max Turns Allowed: ${objective.maxTurns}
 
       Instructions:
-      1. If the conversation is empty (Turn 0), generate an opening question that requires the learner to explain or apply the concept.
-      2. If the learner has responded, evaluate their answer against EVERY rubric criterion independently.
-      3. If all criteria are 'MET', mark the verdict as 'MASTERED', set should_continue to false, and provide brief positive feedback.
-      4. If some criteria are missing/partial AND turns remain, ask EXACTLY ONE targeted follow-up question to nudge them toward the missing reasoning. DO NOT give them the answer.
-      5. If the turn limit is reached (${objective.maxTurns}) and they haven't mastered it, set should_continue to false, mark verdict as 'PARTIAL' or 'OFF_TRACK', and summarize what they missed.
-      6. Do NOT accept verbatim copying of the objective description as mastery. They must show understanding.
+      1. If the conversation is empty (Turn 0), generate a friendly opening question asking them to explain the concept.
+      2. If the learner has responded, evaluate their answer. BE SUPER EASY. If they show even a basic, rough understanding of the concepts, mark the criteria as 'MET'.
+      3. If they get the basic idea, mark the verdict as 'MASTERED', set should_continue to false, and provide brief positive feedback ("Great job!").
+      4. If they are completely off base, ask exactly ONE simple hint-based follow-up question.
+      5. If the turn limit is reached (${objective.maxTurns}) and they haven't mastered it, set should_continue to false, mark verdict as 'PARTIAL', and summarize what they missed.
     `
 
     // 4. Call LLM to evaluate and generate next turn

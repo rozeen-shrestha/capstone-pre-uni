@@ -14,15 +14,29 @@ export default async function CourseDetail({ params }: { params: { courseId: str
   const modules = await Module.find({ courseId: course._id }).sort({ order: 1 }).lean() as any[]
   
   for (const mod of modules) {
-    mod.lessons = await Lesson.find({ moduleId: mod._id }).sort({ order: 1 }).lean()
+  // Get student's attempts to show checkmarks
+  const student = await User.findOne({ role: 'STUDENT' }).lean() as any
+  let attempts = []
+  let objectives = []
+  if (student) {
+    attempts = await Attempt.find({ userId: student._id }).lean() as any[]
+    objectives = await Objective.find({}).lean() as any[]
+  }
+  
+  // Helper to check if a lesson (assessment) is mastered
+  const isMastered = (lessonId: string) => {
+    const obj = objectives.find(o => o.lessonId.toString() === lessonId)
+    if (!obj) return false
+    return attempts.some(a => a.objectiveId.toString() === obj._id.toString() && a.status === 'MASTERED')
   }
 
   // Helper for icon based on type
-  const getIcon = (type: string) => {
+  const getIcon = (type: string, isCompleted: boolean) => {
+    if (isCompleted) return <CheckCircle2 className="w-5 h-5 text-green-600" />
     switch (type) {
       case 'VIDEO': return <PlaySquare className="w-5 h-5 text-gray-500" />
       case 'READING': return <BookOpen className="w-5 h-5 text-gray-500" />
-      case 'ASSESSMENT': return <MessageCircleQuestion className="w-5 h-5 text-gray-500" />
+      case 'ASSESSMENT': return <MessageCircleQuestion className="w-5 h-5 text-blue-500" />
       default: return <BookOpen className="w-5 h-5 text-gray-500" />
     }
   }
@@ -44,6 +58,7 @@ export default async function CourseDetail({ params }: { params: { courseId: str
       <div className="max-w-5xl mx-auto mt-8 px-6">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold">Course Content</h2>
+          <Link href="/instructor" className="text-sm text-gray-500 hover:underline">Instructor View</Link>
         </div>
 
         <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
@@ -56,7 +71,9 @@ export default async function CourseDetail({ params }: { params: { courseId: str
               
               {/* Module Lessons */}
               <div className="px-2 py-2">
-                {mod.lessons?.map((lesson: any, idx: number) => (
+                {mod.lessons?.map((lesson: any, idx: number) => {
+                  const completed = lesson.type === 'ASSESSMENT' && isMastered(lesson._id.toString())
+                  return (
                   <Link 
                     href={`/course/${course._id.toString()}/lesson/${lesson._id.toString()}`}
                     key={lesson._id.toString()}
@@ -64,7 +81,7 @@ export default async function CourseDetail({ params }: { params: { courseId: str
                   >
                     <div className="flex items-start gap-4">
                       <div className="mt-1">
-                        {getIcon(lesson.type)}
+                        {getIcon(lesson.type, completed)}
                       </div>
                       <div>
                         <h4 className="text-base font-medium text-gray-900 group-hover:text-blue-600">

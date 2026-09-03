@@ -14,6 +14,9 @@ export default async function CourseDetail({ params }: { params: { courseId: str
   const modules = await Module.find({ courseId: course._id }).sort({ order: 1 }).lean() as any[]
   
   for (const mod of modules) {
+    mod.lessons = await Lesson.find({ moduleId: mod._id }).sort({ order: 1 }).lean()
+  }
+
   // Get student's attempts to show checkmarks
   const student = await User.findOne({ role: 'STUDENT' }).lean() as any
   let attempts = []

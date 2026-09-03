@@ -16,6 +16,25 @@ export default async function LessonViewer({ params }: { params: { courseId: str
   const objectives = await Objective.find({ lessonId: lesson._id }).lean() as any[]
   const student = await User.findOne({ role: 'STUDENT' }).lean() as any
 
+  // Find next lesson
+  const allModules = await Module.find({ courseId: courseId }).sort({ order: 1 }).lean() as any[]
+  let nextLessonId = null
+  
+  for (let i = 0; i < allModules.length; i++) {
+    const modLessons = await Lesson.find({ moduleId: allModules[i]._id }).sort({ order: 1 }).lean() as any[]
+    const currentIdx = modLessons.findIndex(l => l._id.toString() === lessonId)
+    
+    if (currentIdx !== -1) {
+      if (currentIdx + 1 < modLessons.length) {
+        nextLessonId = modLessons[currentIdx + 1]._id.toString()
+      } else if (i + 1 < allModules.length) {
+        const nextModLessons = await Lesson.find({ moduleId: allModules[i + 1]._id }).sort({ order: 1 }).lean() as any[]
+        if (nextModLessons.length > 0) nextLessonId = nextModLessons[0]._id.toString()
+      }
+      break
+    }
+  }
+
   return (
     <main className="min-h-screen flex flex-col bg-gray-50">
       {/* Top Navbar */}
@@ -77,9 +96,15 @@ export default async function LessonViewer({ params }: { params: { courseId: str
           {/* Navigation to next */}
           {lesson.type !== 'ASSESSMENT' && (
              <div className="mt-12 pt-8 border-t flex justify-end">
-                <Link href={`/course/${courseId}`} className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 font-medium">
-                  Mark Complete & Continue
-                </Link>
+                {nextLessonId ? (
+                  <Link href={`/course/${courseId}/lesson/${nextLessonId}`} className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 font-medium">
+                    Mark Complete & Continue
+                  </Link>
+                ) : (
+                  <Link href={`/course/${courseId}`} className="bg-gray-800 text-white px-6 py-2 rounded-md hover:bg-gray-900 font-medium">
+                    Return to Course
+                  </Link>
+                )}
              </div>
           )}
         </div>

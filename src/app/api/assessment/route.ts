@@ -58,10 +58,15 @@ export async function POST(req: Request) {
     `
 
     // 4. Call LLM to evaluate and generate next turn
+    let aiMessages = conversation.map(msg => ({ role: msg.role as any, content: msg.content }))
+    if (aiMessages.length === 0) {
+      aiMessages = [{ role: 'user', content: 'I am ready for the assessment. Please ask me the first question.' }]
+    }
+
     const { object } = await generateObject({
       model: google('gemini-1.5-pro'),
       system: systemPrompt,
-      messages: conversation.map(msg => ({ role: msg.role as any, content: msg.content })),
+      messages: aiMessages,
       schema: z.object({
         coverage: z.array(z.object({
           criterionIndex: z.number().describe('The index (1-based) of the rubric criterion.'),

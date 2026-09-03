@@ -56,8 +56,4 @@ const AttemptSchema = new Schema({
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });
-AttemptSchema.pre('save', function(next) {
-  this.updatedAt = new Date();
-  next();
-});
 export const Attempt = mongoose.models.Attempt || mongoose.model('Attempt', AttemptSchema);

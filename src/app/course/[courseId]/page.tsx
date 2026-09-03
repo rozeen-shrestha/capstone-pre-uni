@@ -1,5 +1,5 @@
 import connectToDatabase from '@/lib/mongoose'
-import { Course, Module, Lesson, Attempt, User } from '@/lib/models'
+import { Course, Module, Lesson, Attempt, User, Objective } from '@/lib/models'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { PlaySquare, BookOpen, MessageCircleQuestion, CheckCircle2 } from 'lucide-react'

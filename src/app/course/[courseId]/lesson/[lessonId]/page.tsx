@@ -1,25 +1,19 @@
-import prisma from '@/lib/prisma'
+import connectToDatabase from '@/lib/mongoose'
+import { Lesson, Module, Objective, User } from '@/lib/models'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import AssessmentChat from './AssessmentChat'
 
 export default async function LessonViewer({ params }: { params: { courseId: string, lessonId: string } }) {
   const { courseId, lessonId } = await params
+  await connectToDatabase()
 
-  const lesson = await prisma.lesson.findUnique({
-    where: { id: lessonId },
-    include: {
-      module: true,
-      objectives: true,
-    }
-  })
+  const lesson = await Lesson.findById(lessonId).lean() as any
+  if (!lesson) notFound()
 
-  if (!lesson || lesson.moduleId !== lesson.module.id) {
-    notFound()
-  }
-
-  // Find a mock student for MVP
-  const student = await prisma.user.findFirst({ where: { role: 'STUDENT' } })
+  const mod = await Module.findById(lesson.moduleId).lean() as any
+  const objectives = await Objective.find({ lessonId: lesson._id }).lean() as any[]
+  const student = await User.findOne({ role: 'STUDENT' }).lean() as any
 
   return (
     <main className="min-h-screen flex flex-col">
@@ -29,7 +23,7 @@ export default async function LessonViewer({ params }: { params: { courseId: str
           <Link href={`/course/${courseId}`} className="text-gray-300 hover:text-white mr-4">
             &larr; Back to Course
           </Link>
-          <span className="font-semibold">{lesson.module.title}</span>
+          <span className="font-semibold">{mod?.title}</span>
         </div>
         <div className="font-medium text-sm">
           Lesson {lesson.order}: {lesson.title}
@@ -55,12 +49,12 @@ export default async function LessonViewer({ params }: { params: { courseId: str
         {/* Assessment Section */}
         <section className="border-t pt-12 mt-12 mb-24">
           <h2 className="text-2xl font-bold mb-4">Check Your Understanding</h2>
-          {lesson.objectives.length > 0 && student ? (
+          {objectives.length > 0 && student ? (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
               <p className="text-blue-900 mb-4">
-                <strong>Learning Objective:</strong> {lesson.objectives[0].description}
+                <strong>Learning Objective:</strong> {objectives[0].description}
               </p>
-              <AssessmentChat objectiveId={lesson.objectives[0].id} userId={student.id} />
+              <AssessmentChat objectiveId={objectives[0]._id.toString()} userId={student._id.toString()} />
             </div>
           ) : (
             <p className="text-gray-500 italic">No assessment available for this lesson.</p>

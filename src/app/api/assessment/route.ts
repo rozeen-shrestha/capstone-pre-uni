@@ -2,38 +2,38 @@ import { NextResponse } from 'next/server'
 import { generateObject } from 'ai'
 import { google } from '@ai-sdk/google'
 import { z } from 'zod'
-import prisma from '@/lib/prisma'
+import connectToDatabase from '@/lib/mongoose'
+import { Objective, Attempt } from '@/lib/models'
 
 export async function POST(req: Request) {
   try {
+    await connectToDatabase()
     const { objectiveId, userId, message } = await req.json()
 
     // 1. Fetch objective
-    const objective = await prisma.objective.findUnique({
-      where: { id: objectiveId }
-    })
+    const objective = await Objective.findById(objectiveId).lean() as any
     
     if (!objective) return NextResponse.json({ error: 'Objective not found' }, { status: 404 })
 
     // 2. Fetch or create Attempt
-    let attempt = await prisma.attempt.findFirst({
-      where: { userId, objectiveId, status: 'IN_PROGRESS' }
+    let attempt = await Attempt.findOne({
+      userId, 
+      objectiveId, 
+      status: 'IN_PROGRESS'
     })
 
     if (!attempt) {
       // First turn: we need to generate an opening question
-      attempt = await prisma.attempt.create({
-        data: {
-          userId,
-          objectiveId,
-          conversation: [],
-        }
+      attempt = await Attempt.create({
+        userId,
+        objectiveId,
+        conversation: [],
       })
     }
 
     const conversation = attempt.conversation as any[]
     
-    // Add user message if provided (null on the very first start request)
+    // Add user message if provided
     if (message) {
       conversation.push({ role: 'user', content: message })
       attempt.turnCount += 1
@@ -44,7 +44,7 @@ export async function POST(req: Request) {
       You are an AI assessment agent evaluating a learner's understanding of a specific learning objective.
       Objective: ${objective.description}
       Rubric Criteria to satisfy:
-      ${objective.rubricCriteria.map((c, i) => `${i + 1}. ${c}`).join('\n')}
+      ${objective.rubricCriteria.map((c: string, i: number) => `${i + 1}. ${c}`).join('\n')}
 
       Current Turn: ${attempt.turnCount}
       Max Turns Allowed: ${objective.maxTurns}
@@ -86,19 +86,14 @@ export async function POST(req: Request) {
        object.should_continue = false
     }
 
-    await prisma.attempt.update({
-      where: { id: attempt.id },
-      data: {
-        conversation: conversation,
-        turnCount: attempt.turnCount,
-        status: finalStatus,
-        coverage: object.coverage,
-      }
-    })
+    attempt.conversation = conversation
+    attempt.status = finalStatus
+    attempt.coverage = object.coverage
+    await attempt.save()
 
     // 6. Return structured response to client
     return NextResponse.json({
-      attemptId: attempt.id,
+      attemptId: attempt._id.toString(),
       verdict: finalStatus,
       coverage: object.coverage,
       next_message: object.next_message,

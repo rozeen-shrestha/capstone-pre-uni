@@ -1,14 +1,13 @@
-import prisma from '@/lib/prisma'
+import connectToDatabase from '@/lib/mongoose'
+import { Course, User } from '@/lib/models'
 import Link from 'next/link'
 
 export default async function CourseCatalog() {
-  const courses = await prisma.course.findMany({
-    include: {
-      instructor: true,
-      modules: true,
-    }
-  })
-
+  await connectToDatabase()
+  
+  // Lean query + populate instructor
+  const courses = await Course.find({}).populate('instructorId').lean() as any[]
+  
   return (
     <main className="min-h-screen p-8 max-w-7xl mx-auto">
       <header className="mb-12">
@@ -21,15 +20,14 @@ export default async function CourseCatalog() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {courses.map((course) => (
           <Link 
-            key={course.id} 
-            href={`/course/${course.id}`}
+            key={course._id.toString()} 
+            href={`/course/${course._id.toString()}`}
             className="block border rounded-lg p-6 hover:shadow-lg transition-shadow bg-white"
           >
             <h2 className="text-2xl font-semibold mb-2">{course.title}</h2>
             <p className="text-gray-600 mb-4 line-clamp-2">{course.description}</p>
             <div className="text-sm text-gray-500 flex justify-between items-center">
-              <span>Instructor: {course.instructor?.email?.split('@')[0]}</span>
-              <span>{course.modules.length} Modules</span>
+              <span>Instructor: {course.instructorId?.email?.split('@')[0]}</span>
             </div>
           </Link>
         ))}

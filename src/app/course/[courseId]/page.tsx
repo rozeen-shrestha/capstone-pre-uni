@@ -66,7 +66,7 @@ export default async function CourseDetail({ params }: { params: { courseId: str
           </Link>
         </div>
 
-        <Accordion type="multiple" className="w-full space-y-4" defaultValue={modules.map(m => m._id.toString())}>
+        <Accordion className="w-full space-y-4" defaultValue={modules[0]?._id.toString()}>
           {modules.map((mod, modIdx) => (
             <AccordionItem value={mod._id.toString()} key={mod._id.toString()} className="border rounded-lg bg-card px-2">
               <AccordionTrigger className="px-4 py-4 hover:no-underline hover:bg-muted/50 rounded-t-lg transition-colors text-lg font-semibold">

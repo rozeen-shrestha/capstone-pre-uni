@@ -4,6 +4,7 @@ import mongoose, { Schema } from 'mongoose';
 const UserSchema = new Schema({
   email: { type: String, required: true, unique: true },
   role: { type: String, enum: ['STUDENT', 'INSTRUCTOR'], default: 'STUDENT' },
+  completedLessons: [{ type: Schema.Types.ObjectId, ref: 'Lesson' }],
   createdAt: { type: Date, default: Date.now }
 });
 export const User = mongoose.models.User || mongoose.model('User', UserSchema);

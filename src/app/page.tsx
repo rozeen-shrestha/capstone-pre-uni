@@ -1,6 +1,8 @@
 import connectToDatabase from '@/lib/mongoose'
-import { Course, User } from '@/lib/models'
+import { Course } from '@/lib/models'
 import Link from 'next/link'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 
 export default async function CourseCatalog() {
   await connectToDatabase()
@@ -9,33 +11,40 @@ export default async function CourseCatalog() {
   const courses = await Course.find({}).populate('instructorId').lean() as any[]
   
   return (
-    <main className="min-h-screen p-8 max-w-7xl mx-auto">
-      <header className="mb-12">
-        <h1 className="text-4xl font-bold mb-4">Course Catalog</h1>
-        <p className="text-lg text-gray-600">
-          Browse AI-assessed courses and improve your understanding through conversational learning.
-        </p>
-      </header>
+    <main className="min-h-screen bg-background text-foreground p-8">
+      <div className="max-w-7xl mx-auto">
+        <header className="mb-12">
+          <h1 className="text-4xl font-extrabold tracking-tight mb-4">Course Catalog</h1>
+          <p className="text-lg text-muted-foreground">
+            Browse AI-assessed courses and improve your understanding through conversational learning.
+          </p>
+        </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {courses.map((course) => (
-          <Link 
-            key={course._id.toString()} 
-            href={`/course/${course._id.toString()}`}
-            className="block border rounded-lg p-6 hover:shadow-lg transition-shadow bg-white"
-          >
-            <h2 className="text-2xl font-semibold mb-2">{course.title}</h2>
-            <p className="text-gray-600 mb-4 line-clamp-2">{course.description}</p>
-            <div className="text-sm text-gray-500 flex justify-between items-center">
-              <span>Instructor: {course.instructorId?.email?.split('@')[0]}</span>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {courses.map((course) => (
+            <Card key={course._id.toString()} className="hover:shadow-md transition-all">
+              <CardHeader>
+                <CardTitle>{course.title}</CardTitle>
+                <CardDescription className="line-clamp-2">{course.description}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-sm text-muted-foreground">
+                  Instructor: {course.instructorId?.email?.split('@')[0]}
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Link href={`/course/${course._id.toString()}`} className="w-full">
+                  <Button className="w-full">View Course</Button>
+                </Link>
+              </CardFooter>
+            </Card>
+          ))}
+          {courses.length === 0 && (
+            <div className="col-span-full text-center py-12 text-muted-foreground">
+              No courses available yet.
             </div>
-          </Link>
-        ))}
-        {courses.length === 0 && (
-          <div className="col-span-full text-center py-12 text-gray-500">
-            No courses available yet.
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </main>
   )

@@ -1,19 +1,22 @@
 import connectToDatabase from '@/lib/mongoose'
-import { Lesson, Module, Objective, User } from '@/lib/models'
+import { Course, Module, Lesson, Attempt, User, Objective } from '@/lib/models'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import AssessmentChat from './AssessmentChat'
-import { BookOpen, PlaySquare, MessageCircleQuestion } from 'lucide-react'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { markLessonCompleteAndRedirect } from '@/app/actions'
+import { Separator } from '@/components/ui/separator'
 
 export default async function LessonViewer({ params }: { params: { courseId: string, lessonId: string } }) {
   const { courseId, lessonId } = await params
   await connectToDatabase()
 
+  const course = await Course.findById(courseId).lean() as any
   const lesson = await Lesson.findById(lessonId).lean() as any
-  if (!lesson) notFound()
+  if (!course || !lesson) notFound()
 
   const mod = await Module.findById(lesson.moduleId).lean() as any
-  const objectives = await Objective.find({ lessonId: lesson._id }).lean() as any[]
   const student = await User.findOne({ role: 'STUDENT' }).lean() as any
 
   // Find next lesson
@@ -35,76 +38,48 @@ export default async function LessonViewer({ params }: { params: { courseId: str
     }
   }
 
+  // Handle server action binding
+  const handleComplete = markLessonCompleteAndRedirect.bind(null, student._id.toString(), lessonId, courseId, nextLessonId)
+
   return (
-    <main className="min-h-screen flex flex-col bg-gray-50">
+    <main className="min-h-screen flex flex-col bg-background text-foreground">
       {/* Top Navbar */}
-      <header className="bg-white border-b px-6 py-4 flex justify-between items-center sticky top-0 z-10 shadow-sm">
-        <div className="flex items-center gap-4">
-          <Link href={`/course/${courseId}`} className="text-gray-500 hover:text-blue-600 font-medium text-sm">
-            &larr; Back to Course
-          </Link>
-          <div className="h-4 w-px bg-gray-300"></div>
-          <span className="font-semibold text-gray-800">{mod?.title}</span>
-        </div>
+      <header className="bg-card border-b h-16 flex items-center px-6 shrink-0">
+        <Link href={`/course/${courseId}`} className="text-sm font-medium text-muted-foreground hover:text-foreground mr-4">
+          &larr; Back
+        </Link>
+        <div className="h-6 w-px bg-border mx-2" />
+        <span className="font-semibold ml-4">{course.title}</span>
+        <span className="text-muted-foreground mx-2">/</span>
+        <span className="text-muted-foreground">{mod.title}</span>
       </header>
 
       {/* Main Content Area */}
-      <div className="flex-grow w-full max-w-4xl mx-auto p-8">
-        <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 mb-12">
-          
-          <div className="flex items-center gap-3 text-gray-500 mb-4 text-sm font-medium uppercase tracking-wider">
-             {lesson.type === 'VIDEO' ? <PlaySquare className="w-5 h-5"/> : 
-              lesson.type === 'ASSESSMENT' ? <MessageCircleQuestion className="w-5 h-5"/> : 
-              <BookOpen className="w-5 h-5"/>}
-             {lesson.type}
-          </div>
-
-          <h1 className="text-3xl font-bold mb-8 text-gray-900">{lesson.title}</h1>
+      <div className="flex-1 overflow-auto bg-background">
+        <div className="max-w-4xl mx-auto py-12 px-6">
+          <h1 className="text-3xl font-extrabold mb-8">{lesson.title}</h1>
           
           {lesson.type === 'ASSESSMENT' ? (
-            <div className="mt-4">
-              <p className="text-lg text-gray-700 mb-8">{lesson.content}</p>
-              {objectives.length > 0 && student ? (
-                <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-6">
-                  <div className="mb-6 border-b border-blue-100 pb-4">
-                     <h2 className="text-xl font-bold text-blue-900 mb-2">Viva Assessment</h2>
-                     <p className="text-blue-800/80"><strong>Task:</strong> {objectives[0].description}</p>
-                  </div>
-                  <AssessmentChat objectiveId={objectives[0]._id.toString()} userId={student._id.toString()} />
-                </div>
-              ) : (
-                <p className="text-gray-500 italic">No assessment data available.</p>
-              )}
+            <div className="mt-8">
+              <AssessmentChat objectiveId={lesson._id.toString()} userId={student._id.toString()} />
             </div>
           ) : (
-            <article className="prose lg:prose-xl max-w-none">
-              {lesson.type === 'VIDEO' ? (
-                <div className="aspect-w-16 aspect-h-9 bg-gray-900 flex items-center justify-center rounded-xl mb-8">
-                  <div className="text-center p-8">
-                    <PlaySquare className="w-16 h-16 text-white/50 mx-auto mb-4" />
-                    <span className="text-white/80 font-medium">Video Player: {lesson.content}</span>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-gray-800 leading-relaxed whitespace-pre-wrap">
-                  {lesson.content}
-                </div>
-              )}
-            </article>
+            <Card className="bg-card shadow-sm border-border">
+              <CardContent className="pt-6 prose dark:prose-invert max-w-none text-card-foreground">
+                <div dangerouslySetInnerHTML={{ __html: lesson.content }} />
+              </CardContent>
+            </Card>
           )}
 
           {/* Navigation to next */}
           {lesson.type !== 'ASSESSMENT' && (
-             <div className="mt-12 pt-8 border-t flex justify-end">
-                {nextLessonId ? (
-                  <Link href={`/course/${courseId}/lesson/${nextLessonId}`} className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 font-medium">
-                    Mark Complete & Continue
-                  </Link>
-                ) : (
-                  <Link href={`/course/${courseId}`} className="bg-gray-800 text-white px-6 py-2 rounded-md hover:bg-gray-900 font-medium">
-                    Return to Course
-                  </Link>
-                )}
+             <div className="mt-12">
+               <Separator className="mb-8" />
+               <form action={handleComplete} className="flex justify-end">
+                  <Button type="submit" size="lg">
+                    {nextLessonId ? 'Mark Complete & Continue' : 'Finish Course'}
+                  </Button>
+               </form>
              </div>
           )}
         </div>

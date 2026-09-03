@@ -1,6 +1,7 @@
 import prisma from '@/lib/prisma'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import AssessmentChat from './AssessmentChat'
 
 export default async function LessonViewer({ params }: { params: { courseId: string, lessonId: string } }) {
   const { courseId, lessonId } = await params
@@ -16,6 +17,9 @@ export default async function LessonViewer({ params }: { params: { courseId: str
   if (!lesson || lesson.moduleId !== lesson.module.id) {
     notFound()
   }
+
+  // Find a mock student for MVP
+  const student = await prisma.user.findFirst({ where: { role: 'STUDENT' } })
 
   return (
     <main className="min-h-screen flex flex-col">
@@ -48,17 +52,15 @@ export default async function LessonViewer({ params }: { params: { courseId: str
           )}
         </article>
 
-        {/* Assessment Section placeholder */}
-        <section className="border-t pt-12 mt-12">
+        {/* Assessment Section */}
+        <section className="border-t pt-12 mt-12 mb-24">
           <h2 className="text-2xl font-bold mb-4">Check Your Understanding</h2>
-          {lesson.objectives.length > 0 ? (
+          {lesson.objectives.length > 0 && student ? (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
               <p className="text-blue-900 mb-4">
                 <strong>Learning Objective:</strong> {lesson.objectives[0].description}
               </p>
-              <div className="text-gray-500 italic">
-                (AI Conversational Assessment component will go here in Phase 3)
-              </div>
+              <AssessmentChat objectiveId={lesson.objectives[0].id} userId={student.id} />
             </div>
           ) : (
             <p className="text-gray-500 italic">No assessment available for this lesson.</p>

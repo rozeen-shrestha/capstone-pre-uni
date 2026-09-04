@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, FormEvent } from 'react'
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -16,13 +16,26 @@ type AssessmentResponse = {
   turnCount: number
   maxTurns: number
   error?: string
+  history?: { role: string, content: string }[]
 }
 
-export default function AssessmentChat({ objectiveId, userId }: { objectiveId: string, userId: string }) {
+export default function AssessmentChat({ 
+  objectiveId, 
+  userId,
+  isMastered,
+  handleComplete,
+  hasNextLesson
+}: { 
+  objectiveId: string, 
+  userId: string,
+  isMastered: boolean,
+  handleComplete: () => void,
+  hasNextLesson: boolean
+}) {
   const [messages, setMessages] = useState<{role: string, content: string}[]>([])
   const [input, setInput] = useState('')
-  const [isFinished, setIsFinished] = useState(false)
-  const [verdict, setVerdict] = useState<string | null>(null)
+  const [isFinished, setIsFinished] = useState(isMastered)
+  const [verdict, setVerdict] = useState<string | null>(isMastered ? 'MASTERED' : null)
   const [isLoading, setIsLoading] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -43,7 +56,11 @@ export default function AssessmentChat({ objectiveId, userId }: { objectiveId: s
       const data: AssessmentResponse = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to start')
       
-      setMessages([{ role: 'agent', content: data.next_message }])
+      if (data.history && data.history.length > 0) {
+        setMessages(data.history)
+      } else {
+        setMessages([{ role: 'agent', content: data.next_message }])
+      }
       setVerdict(data.verdict)
       setIsFinished(!data.should_continue)
     } catch (e) {
@@ -53,7 +70,7 @@ export default function AssessmentChat({ objectiveId, userId }: { objectiveId: s
     }
   }
 
-  const sendMessage = async (e: React.FormEvent) => {
+  const sendMessage = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!input.trim() || isFinished || isLoading) return
 
@@ -83,57 +100,79 @@ export default function AssessmentChat({ objectiveId, userId }: { objectiveId: s
 
   if (messages.length === 0) {
     return (
-      <Card className="w-full max-w-2xl mx-auto mt-12 bg-card border-muted text-center py-12">
-        <CardContent>
-          <div className="w-16 h-16 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-6">
-            <CheckCircle2 className="w-8 h-8" />
-          </div>
-          <h2 className="text-2xl font-bold text-foreground mb-4">Ready for the Viva?</h2>
-          <p className="text-muted-foreground mb-8 max-w-md mx-auto">
-            Our AI Agent will assess your understanding of this topic through a short conversation. Don't worry, just answer naturally!
-          </p>
-          <Button onClick={startAssessment} disabled={isLoading} size="lg" className="px-8">
-            {isLoading ? 'Starting...' : 'Start Assessment'}
-          </Button>
-        </CardContent>
-      </Card>
+      <div className="w-full max-w-3xl mx-auto mt-12 border border-border bg-card text-center py-16 shadow-sm rounded-sm">
+        <div className="w-16 h-16 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-6">
+          <CheckCircle2 className="w-8 h-8" />
+        </div>
+        {isMastered ? (
+          <>
+            <h2 className="text-3xl font-serif font-bold text-foreground mb-4">Assessment Mastered</h2>
+            <p className="text-muted-foreground mb-8 max-w-md mx-auto text-lg font-sans">
+              You have successfully passed this viva assessment.
+            </p>
+            <div className="flex justify-center gap-4">
+              <Button onClick={startAssessment} disabled={isLoading} variant="outline" size="lg" className="rounded-sm font-bold shadow-none h-12 font-sans">
+                {isLoading ? 'Loading...' : 'Review Feedback'}
+              </Button>
+              <form action={handleComplete}>
+                <Button type="submit" size="lg" className="rounded-sm font-bold shadow-none h-12 font-sans">
+                  {hasNextLesson ? 'Continue to Next Lesson' : 'Finish Course'}
+                </Button>
+              </form>
+            </div>
+          </>
+        ) : (
+          <>
+            <h2 className="text-3xl font-serif font-bold text-foreground mb-4">Final Viva Assessment</h2>
+            <p className="text-muted-foreground mb-8 max-w-lg mx-auto text-lg leading-relaxed font-sans">
+              Demonstrate your understanding of this module's core concepts. You must answer the examiner's questions to pass.
+            </p>
+            <Button onClick={startAssessment} disabled={isLoading} size="lg" className="px-10 rounded-sm font-bold shadow-none h-12 text-base font-sans">
+              {isLoading ? 'Starting Assessment...' : 'Start Assessment'}
+            </Button>
+          </>
+        )}
+      </div>
     )
   }
 
   return (
-    <Card className="w-full max-w-3xl mx-auto h-[600px] flex flex-col bg-card border-border shadow-md">
-      <CardHeader className="border-b border-border py-4 bg-muted/30">
-        <CardTitle className="flex justify-between items-center text-lg">
-          <span className="font-semibold text-foreground">Viva Assessment</span>
-          {verdict && (
-            <span className={`text-xs px-3 py-1 rounded-full font-medium ${
-              verdict === 'MASTERED' ? 'bg-green-500/20 text-green-600 dark:text-green-400' :
-              verdict === 'PARTIAL' ? 'bg-yellow-500/20 text-yellow-600 dark:text-yellow-400' :
-              verdict === 'OFF_TRACK' ? 'bg-red-500/20 text-red-600 dark:text-red-400' :
-              'bg-blue-500/20 text-blue-600 dark:text-blue-400'
-            }`}>
-              {verdict.replace('_', ' ')}
-            </span>
-          )}
-        </CardTitle>
-      </CardHeader>
+    <div className="w-full lg:w-[500px] shrink-0 h-screen flex flex-col bg-card border-l border-border font-sans shadow-sm">
+      <div className="border-b border-border py-6 px-8 bg-muted/30 flex justify-between items-center">
+        <div>
+          <h2 className="font-serif font-bold text-foreground text-xl">Viva Assessment</h2>
+          <p className="text-sm text-muted-foreground mt-1">Respond to the examiner's prompts below.</p>
+        </div>
+        {verdict && (
+          <span className={`text-xs px-4 py-1.5 rounded-sm font-bold tracking-wider uppercase ${
+            verdict === 'MASTERED' ? 'bg-green-500/20 text-green-700 dark:text-green-400' :
+            'bg-muted text-muted-foreground'
+          }`}>
+            {verdict.replace('_', ' ')}
+          </span>
+        )}
+      </div>
       
-      <ScrollArea className="flex-1 p-4" ref={scrollRef}>
-        <div className="space-y-4 pb-4">
+      <div className="flex-1 overflow-y-auto p-6" ref={scrollRef}>
+        <div className="space-y-8 pb-4">
           {messages.map((msg, i) => (
-            <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[80%] rounded-2xl px-5 py-3 shadow-sm ${
+            <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+              <div className={`text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2 px-1`}>
+                {msg.role === 'user' ? 'Your Answer' : 'Examiner'}
+              </div>
+              <div className={`max-w-[85%] px-6 py-5 rounded-sm text-base leading-relaxed font-sans ${
                 msg.role === 'user' 
-                  ? 'bg-primary text-primary-foreground rounded-tr-sm' 
-                  : 'bg-muted text-foreground border border-border rounded-tl-sm'
+                  ? 'bg-muted text-foreground border border-border' 
+                  : 'bg-primary/10 text-foreground border border-primary/20 shadow-sm'
               }`}>
                 {msg.content}
               </div>
             </div>
           ))}
           {isLoading && (
-            <div className="flex justify-start">
-              <div className="bg-muted text-muted-foreground border border-border rounded-2xl rounded-tl-sm px-5 py-3 text-sm flex items-center gap-2">
+            <div className="flex flex-col items-start">
+              <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2 px-1">Examiner</div>
+              <div className="bg-primary/10 text-muted-foreground border border-primary/20 shadow-sm rounded-sm px-6 py-5 text-sm flex items-center gap-2">
                 <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce"></span>
                 <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></span>
                 <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{animationDelay: '0.4s'}}></span>
@@ -141,29 +180,34 @@ export default function AssessmentChat({ objectiveId, userId }: { objectiveId: s
             </div>
           )}
         </div>
-      </ScrollArea>
+      </div>
       
-      <div className="p-4 bg-muted/20 border-t border-border">
+      <div className="p-6 bg-muted/20 border-t border-border">
         {isFinished ? (
-          <div className="text-center py-4 bg-muted/50 rounded-lg border border-border">
-            <h3 className="font-bold text-lg mb-2 text-foreground">Assessment Complete</h3>
-            <p className="text-muted-foreground">You can close this chat and continue to the next lesson.</p>
+          <div className="text-center py-6 bg-green-500/10 rounded-sm border border-green-500/20">
+            <h3 className="font-serif font-bold text-lg mb-2 text-green-700 dark:text-green-400">Assessment Complete</h3>
+            <p className="text-green-700/80 dark:text-green-400/80 text-sm mb-6">Your answers have met the passing criteria.</p>
+            <form action={handleComplete}>
+              <Button type="submit" size="lg" className="rounded-sm font-bold shadow-none w-full font-sans">
+                {hasNextLesson ? 'Continue to Next Lesson' : 'Finish Course'}
+              </Button>
+            </form>
           </div>
         ) : (
-          <form onSubmit={sendMessage} className="flex gap-2">
+          <form onSubmit={sendMessage} className="flex gap-4">
             <Input 
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Type your answer here..."
+              placeholder="Enter your response..."
               disabled={isLoading}
-              className="flex-1 bg-background"
+              className="flex-1 bg-background border-input rounded-sm h-12 shadow-sm text-base focus-visible:ring-primary focus-visible:border-primary font-sans"
             />
-            <Button type="submit" disabled={isLoading || !input.trim()}>
-              <Send className="w-4 h-4 mr-2" /> Send
+            <Button type="submit" disabled={isLoading || !input.trim()} className="rounded-sm font-bold shadow-none h-12 px-6 font-sans">
+              Submit Answer
             </Button>
           </form>
         )}
       </div>
-    </Card>
+    </div>
   )
 }

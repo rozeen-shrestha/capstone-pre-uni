@@ -4,10 +4,18 @@ import mongoose, { Schema } from 'mongoose';
 const UserSchema = new Schema({
   email: { type: String, required: true, unique: true },
   role: { type: String, enum: ['STUDENT', 'INSTRUCTOR'], default: 'STUDENT' },
-  completedLessons: [{ type: Schema.Types.ObjectId, ref: 'Lesson' }],
   createdAt: { type: Date, default: Date.now }
 });
 export const User = mongoose.models.User || mongoose.model('User', UserSchema);
+
+// Enrollment
+const EnrollmentSchema = new Schema({
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  courseId: { type: Schema.Types.ObjectId, ref: 'Course', required: true },
+  completedLessons: [{ type: Schema.Types.ObjectId, ref: 'Lesson' }],
+  createdAt: { type: Date, default: Date.now }
+});
+export const Enrollment = mongoose.models.Enrollment || mongoose.model('Enrollment', EnrollmentSchema);
 
 // Course
 const CourseSchema = new Schema({
